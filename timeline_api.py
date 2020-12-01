@@ -3,7 +3,7 @@
 #Jose Alvarado, Luan Nguyen, Sagar Joshi
 
 import flask
-from flask import request, jsonify, g, current_app
+from flask import request, jsonify, g, current_app, make_response
 import sqlite3, time, datetime
 
 
@@ -87,8 +87,15 @@ def getPublicTimeline():
     conn.row_factory = dict_factory
     cur = conn.cursor()
     recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
+    res = make_response(jsonify(recentTweets))
+    unix = time.time()
+    date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+    res.headers['Last-Modified'] = date
+    res.headers['Cache-Control'] = 'public, max-age=3000'
+    res.headers['If-Modified-Since'] = date
+    return res.make_conditional(request)
+    # return jsonify(recentTweets), 201, {'Last-Modified': 'Wed, 21 Oct 2015 07:28:00 GMT ' , 'Cache-Control':'public, max-age=3000', 'If-Modified-Since':'Last-Modified'}
 
-    return jsonify(recentTweets), 201
 
 
 #getHomeTimeline(username)
@@ -129,6 +136,10 @@ def postTweet():
 
     return jsonify(message= Username + tweetText + ' posted'), 201
 
+# @app.after_request
+# def add_headers(resp):
+#     resp.headers['Last-Modified']
+#     return resp
 # 404 error if page not found
 
 @app.errorhandler(404)

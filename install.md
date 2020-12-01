@@ -11,6 +11,7 @@
 	`$ sudo apt install python3-flask`  
 	`$ sudo apt install ruby-foreman`  
 	`$ sudo apt install httpie`  
+	`$ pip install Flask-BasicAuth`  
 
 3. Run these commands to initialize the database  
 	`$ export FLASK_APP=user_api.py`  

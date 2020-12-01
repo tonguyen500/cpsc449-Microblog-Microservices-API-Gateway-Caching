@@ -1,4 +1,4 @@
-# cpsc-449 Project 2: Microblog Microservices
+# cpsc-449 Project 2+4: Microblog Microservices and API Gateway
 Jose Alvarado, Sagar Joshi, Luan Nguyen
 
 
@@ -27,3 +27,6 @@ See the [Instructions in Microblog Instructions.pdf](Microblog%20Instructions.pd
 
 ## REST API Definition
 See the [REST API Definitions in Rest API-Defintion.pdf](Rest%20API%20Definition.pdf)
+
+## Project 4 Readme.txt
+See the [Project 4 descriptions and minor insructions in READMEProject4.txt](READMEProject4.txt)

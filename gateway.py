@@ -47,7 +47,7 @@ timeline3 = app.config['TIMELINES_2']   #variable to hold route for third timeli
 
 auth = app.config['AUTH']  #holds unique route used for authentication
 
-user_endpoints = ['/users/all', '/login', '/register', '/addFollower', 'removeFollower']  #list holding endpoints for user api
+user_endpoints = ['/users/all', '/login', '/register', '/follow', 'unfollow']  #list holding endpoints for user api
 timeline_endpoints = ['/homeTimeline', '/publicTimeline', '/postTweet', '/userTimeline']    #list holding endpoints for timeline api
 
 player = [user, user2, user3]                   #list holding the variables with user routes

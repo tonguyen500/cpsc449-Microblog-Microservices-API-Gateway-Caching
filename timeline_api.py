@@ -83,6 +83,11 @@ def getUserTimeline():
 
 @app.route('/publicTimeline', methods=['GET'])
 def getPublicTimeline():
+
+    if 'If-Modified-Since' in request.headers:
+        date_time_obj = datetime.datetime.strptime(request.headers['If-Modified-Since'], '%a, %d %b %Y %H:%M:%S %Z')
+        if (date_time_obj - datetime.datetime.now()).seconds < 300:
+            return 304
     conn = sqlite3.connect('data.db')
     conn.row_factory = dict_factory
     cur = conn.cursor()
@@ -90,13 +95,14 @@ def getPublicTimeline():
     res = make_response(jsonify(recentTweets))
     unix = time.time()
     date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
-    res.headers['Last-Modified'] = date
-    res.headers['Cache-Control'] = 'public, max-age=3000'
-    res.headers['If-Modified-Since'] = date
-    return res.make_conditional(request)
+
+
+    res.last_modified = datetime.datetime.now()
+    # res.cache_control.max_age = 3000
+    # return jsonify({"data" : request.headers.get('If-Modified-Since') })
+    # res.headers['If-Modified-Since'] = date
+    return res
     # return jsonify(recentTweets), 201, {'Last-Modified': 'Wed, 21 Oct 2015 07:28:00 GMT ' , 'Cache-Control':'public, max-age=3000', 'If-Modified-Since':'Last-Modified'}
-
-
 
 #getHomeTimeline(username)
 #Returns recent tweets from all users that this user follows.

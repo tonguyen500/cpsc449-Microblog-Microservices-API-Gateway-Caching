@@ -3,7 +3,7 @@
 #Jose Alvarado, Luan Nguyen, Sagar Joshi
 
 import flask
-from flask import request, jsonify, g, current_app, make_response
+from flask import request, jsonify, g, current_app, make_response, Response
 import sqlite3, time, datetime
 
 
@@ -86,23 +86,33 @@ def getPublicTimeline():
 
     if 'If-Modified-Since' in request.headers:
         date_time_obj = datetime.datetime.strptime(request.headers['If-Modified-Since'], '%a, %d %b %Y %H:%M:%S %Z')
-        if (date_time_obj - datetime.datetime.now()).seconds < 300:
-            return 304
-    conn = sqlite3.connect('data.db')
-    conn.row_factory = dict_factory
-    cur = conn.cursor()
-    recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
-    res = make_response(jsonify(recentTweets))
-    unix = time.time()
-    date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+        if (datetime.datetime.now() - date_time_obj).seconds < 3:
+            return Response(status=304)
 
+        else:
+            conn = sqlite3.connect('data.db')
+            conn.row_factory = dict_factory
+            cur = conn.cursor()
+            recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
+            res = make_response(jsonify(recentTweets))
+            unix = time.time()
+            date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
 
-    res.last_modified = datetime.datetime.now()
-    # res.cache_control.max_age = 3000
-    # return jsonify({"data" : request.headers.get('If-Modified-Since') })
-    # res.headers['If-Modified-Since'] = date
-    return res
-    # return jsonify(recentTweets), 201, {'Last-Modified': 'Wed, 21 Oct 2015 07:28:00 GMT ' , 'Cache-Control':'public, max-age=3000', 'If-Modified-Since':'Last-Modified'}
+            res.last_modified = datetime.datetime.now()
+
+            return res
+    else:
+        conn = sqlite3.connect('data.db')
+        conn.row_factory = dict_factory
+        cur = conn.cursor()
+        recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
+        res = make_response(jsonify(recentTweets))
+        unix = time.time()
+        date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+
+        res.last_modified = datetime.datetime.now()
+
+        return res
 
 #getHomeTimeline(username)
 #Returns recent tweets from all users that this user follows.

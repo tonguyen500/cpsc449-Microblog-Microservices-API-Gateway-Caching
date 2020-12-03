@@ -72,6 +72,7 @@ basic_auth = BasicAuth(app)
 @app.errorhandler(404)
 @basic_auth.required
 def route_page(err):
+    # route = "something"
     try:
         #used for cycling through user routes in round robin style
         for str in user_endpoints:

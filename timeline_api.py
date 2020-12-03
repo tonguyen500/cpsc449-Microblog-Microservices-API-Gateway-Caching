@@ -3,13 +3,19 @@
 #Jose Alvarado, Luan Nguyen, Sagar Joshi
 
 import flask
-from flask import request, jsonify, g, current_app, make_response, Response
+from flask import Flask, request, jsonify, g, current_app, make_response, Response, abort
 import sqlite3, time, datetime
-
+from werkzeug.exceptions import HTTPException, default_exceptions,  Aborter
 
 DATABASE = 'data.db'
 DEBUG = True
 
+class NotModified(HTTPException):
+    code = 304
+    description = '<p>Page not modified</p>'
+
+default_exceptions[304] = NotModified
+abort = Aborter()
 
 app = flask.Flask(__name__)
 app.config.from_object(__name__)
@@ -87,7 +93,7 @@ def getPublicTimeline():
     if 'If-Modified-Since' in request.headers:
         date_time_obj = datetime.datetime.strptime(request.headers['If-Modified-Since'], '%a, %d %b %Y %H:%M:%S %Z')
         if (datetime.datetime.now() - date_time_obj).seconds < 3:
-            return Response(status=304)
+            abort(make_response(jsonify(message='Page not modified'), 340))
 
         else:
             conn = sqlite3.connect('data.db')
@@ -157,6 +163,13 @@ def postTweet():
 #     resp.headers['Last-Modified']
 #     return resp
 # 404 error if page not found
+@app.errorhandler(304)
+def page_not_found(e):
+    return e, 304
+
+@app.route('/debug')
+def debug():
+    abort(304)
 
 @app.errorhandler(404)
 def page_not_found(e):

@@ -3,17 +3,24 @@
 #Jose Alvarado, Luan Nguyen, Sagar Joshi
 
 import flask
-from flask import request, jsonify, g, current_app, make_response, Response
+from flask import Flask, request, jsonify, g, current_app, make_response, Response, abort
 import sqlite3, time, datetime
+from flask_caching import Cache
+from operator import itemgetter
+from datetime import datetime, date, timedelta
+from flask.logging import create_logger
+import logging
+from logging.handlers import RotatingFileHandler
 
 
 DATABASE = 'data.db'
-DEBUG = True
 
-
-app = flask.Flask(__name__)
+app = Flask(__name__)
 app.config.from_object(__name__)
+app.config["DEBUG"]= True
+app.config['CACHE_DEFAULT_TIMEOUT']=300
 
+cache = Cache(app)
 
 def dict_factory(cursor, row):
     d = {}
@@ -86,7 +93,7 @@ def getPublicTimeline():
 
     if 'If-Modified-Since' in request.headers:
         date_time_obj = datetime.datetime.strptime(request.headers['If-Modified-Since'], '%a, %d %b %Y %H:%M:%S %Z')
-        if (datetime.datetime.now() - date_time_obj).seconds < 3:
+        if (datetime.datetime.now() - date_time_obj).seconds < 300:
             return Response(status=304)
 
         else:
@@ -96,8 +103,9 @@ def getPublicTimeline():
             recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
             res = make_response(jsonify(recentTweets))
             unix = time.time()
-            date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+            date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S.%f'))
 
+            res.headers.add('Last-Modified', datetime.now())
             res.last_modified = datetime.datetime.now()
 
             return res
@@ -108,7 +116,7 @@ def getPublicTimeline():
         recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
         res = make_response(jsonify(recentTweets))
         unix = time.time()
-        date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+        date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S.%f'))
 
         res.last_modified = datetime.datetime.now()
 
@@ -128,7 +136,20 @@ def getHomeTimeline():
     cur = conn.cursor()
     homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
 
-    return jsonify(homeTweets), 201
+    is_following_list = []
+
+    homeTimeLine = []
+    for each in is_following_list:
+        tweetList = list(Username=each)
+        cache.set(each, tweetList)
+        app.logger.debug(f"homeTimeLine data from db user: {each}") #Method logger has no debug member
+    else:
+        app.logger.debug(f"homeTimeLine data from cache user: {each}")  #Method logger has no debug member
+        homeTimeLine.extend(cache.get(each))
+    sortedTimeLine = sorted(homeTimeLine, key=itemgetter('dateto'), reverse=True)
+    rsp = Response(jsonify(homeTweets))
+    rsp.headers.add('Last-Modified', datetime.now())
+    return rsp, 201
 
 
 #postTweet(username, text)
@@ -149,6 +170,8 @@ def postTweet():
     conn.commit()
     cur.close()
     conn.close()
+    if Username is None or tweetText(Username):
+        abort(400) #no username or content attached or user does NOT exist
 
     return jsonify(message= Username + tweetText + ' posted'), 201
 

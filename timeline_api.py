@@ -6,6 +6,12 @@ import flask
 from flask import Flask, request, jsonify, g, current_app, make_response, Response, abort
 import sqlite3, time, datetime
 from werkzeug.exceptions import HTTPException, default_exceptions,  Aborter
+from flask_caching import Cache
+from operator import itemgetter
+from datetime import datetime, date, timedelta
+from flask.logging import create_logger
+import logging
+from logging.handlers import RotatingFileHandler
 
 DATABASE = 'data.db'
 DEBUG = True
@@ -16,9 +22,16 @@ class NotModified(HTTPException):
 
 default_exceptions[304] = NotModified
 abort = Aborter()
+cache = Cache(config={'CACHE_TYPE': 'simple','CACHE_DEFAULT_TIMEOUT': 300})
 
 app = flask.Flask(__name__)
 app.config.from_object(__name__)
+app.config["DEBUG"]= True
+# app.config["CACHE_TYPE": "simple"
+# app.config['CACHE_DEFAULT_TIMEOUT']=300
+#
+# cache = Cache(app)
+cache.init_app(app)
 
 def dict_factory(cursor, row):
     d = {}
@@ -35,6 +48,11 @@ def get_db():
         g.db.row_factory = dict_factory
     return g.db
 
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
 
 # initialize database
 @app.cli.command('init')
@@ -80,7 +98,7 @@ def getUserTimeline():
 @app.route('/publicTimeline', methods=['GET'])
 def getPublicTimeline():
     if 'If-Modified-Since' in request.headers:
-        date_time_obj = datetime.datetime.strptime(request.headers['If-Modified-Since'], '%a, %d %b %Y %H:%M:%S %Z')
+        date_time_obj = datetime.strptime(request.headers['If-Modified-Since'], '%a, %d %b %Y %H:%M:%S %Z')
         if (datetime.datetime.now() - date_time_obj).seconds < 3:
             abort(make_response(jsonify(message='Page not modified'), 340))
 
@@ -91,9 +109,9 @@ def getPublicTimeline():
             recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
             res = make_response(jsonify(recentTweets))
             unix = time.time()
-            date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+            date = str(datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
 
-            res.last_modified = datetime.datetime.now()
+            res.last_modified = datetime.now()
 
             return res
     else:
@@ -103,9 +121,9 @@ def getPublicTimeline():
         recentTweets = cur.execute('SELECT * FROM TWEETS ORDER BY DAY_OF DESC LIMIT 25').fetchall()
         res = make_response(jsonify(recentTweets))
         unix = time.time()
-        date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
+        date = str(datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
 
-        res.last_modified = datetime.datetime.now()
+        res.last_modified = datetime.now()
 
         return res
 
@@ -118,9 +136,31 @@ def getHomeTimeline():
     conn = sqlite3.connect('data.db')
     conn.row_factory = dict_factory
     cur = conn.cursor()
+    is_following_list = []
     homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
-    return jsonify(homeTweets), 201
+    for user in query_db('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', Username):
+        if user['FK_USERS'] not in is_following_list:
+            is_following_list.append((user['FK_USERS']))
+    # is_following_list = []
+    str1 = ""
+    for ele in is_following_list:
+        str1 += ele
 
+    homeTimeLine = []
+    # for each in is_following_list:
+    #     tweetList = list(Username=each)
+    #     cache.set(each, tweetList)
+    #     app.logger.debug(f"homeTimeLine data from db user: {each}") #Method logger has no debug member
+    # else:
+    #     app.logger.debug(f"homeTimeLine data from cache user: {each}")  #Method logger has no debug member
+    #     homeTimeLine.extend(cache.get(each))
+    # sortedTimeLine = sorted(homeTimeLine, key=itemgetter('dateto'), reverse=True)
+    # rsp = Response(jsonify(homeTweets))
+    # rsp.headers.add('Last-Modified', datetime.now())
+    # return rsp, 201
+
+    # return jsonify(homeTweets), 201
+    return str1
 
 #postTweet(username, text)
 #Post a new tweet.

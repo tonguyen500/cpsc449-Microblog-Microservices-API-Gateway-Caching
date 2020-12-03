@@ -1,4 +1,6 @@
-        #Jose Alvarado, Luan Nguyen, Sagar Joshi
+#CPSC 449 Project 2
+#MicroBlogging service
+#Jose Alvarado, Luan Nguyen, Sagar Joshi
 
 import flask
 from flask import request, jsonify, g, current_app, make_response, Response
@@ -8,11 +10,13 @@ DATABASE = 'data.db'
 DEBUG = True
 app = flask.Flask(__name__)
 app.config.from_object(__name__)
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
 def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(
@@ -21,6 +25,8 @@ def get_db():
         )
         g.db.row_factory = dict_factory
     return g.db
+
+
 # initialize database
 @app.cli.command('init')
 def init_db():
@@ -29,6 +35,7 @@ def init_db():
         with app.open_resource('schema.sql', mode='r') as f:
             db.cursor().executescript(f.read())
         db.commit()
+        
 @app.teardown_appcontext
 def close_db(e=None):
     if e is not None:
@@ -36,11 +43,14 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+        
 @app.route('/', methods=['GET'])
 def home():
     return '''<h1>MicroBlogging</h1>
 <p>A microblogging service similar to twitter.</p>
 <p>Timeline microservice</p>'''
+
+
 #getUserTimeline(username)
 #Returns recent tweets from a user.
 @app.route('/userTimeline', methods=['GET'])
@@ -54,6 +64,8 @@ def getUserTimeline():
     cur.close()
     conn.close()
     return jsonify(userTimeline), 201
+
+
 #getPublicTimeline()
 #Returns recent tweets from all users.
 @app.route('/publicTimeline', methods=['GET'])
@@ -99,6 +111,8 @@ def getHomeTimeline():
     cur = conn.cursor()
     homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
     return jsonify(homeTweets), 201
+
+
 #postTweet(username, text)
 #Post a new tweet.
 @app.route('/postTweet', methods=['POST'])
@@ -115,6 +129,8 @@ def postTweet():
     cur.close()
     conn.close()
     return jsonify(message= Username + tweetText + ' posted'), 201
+
+
 # @app.after_request
 # def add_headers(resp):
 #     resp.headers['Last-Modified']

@@ -130,12 +130,14 @@ def getPublicTimeline():
 #getHomeTimeline(username)
 #Returns recent tweets from all users that this user follows.
 @app.route('/homeTimeline', methods=['GET'])
+
 def getHomeTimeline():
     userInfo = request.get_json()
     Username = userInfo.get('username')
     conn = sqlite3.connect('data.db')
     conn.row_factory = dict_factory
     cur = conn.cursor()
+
     is_following_list = []
     homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
     for user in query_db('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', Username):
@@ -147,10 +149,10 @@ def getHomeTimeline():
         str1 += ele
 
     homeTimeLine = []
-    # for each in is_following_list:
-    #     tweetList = list(Username=each)
-    #     cache.set(each, tweetList)
-    #     app.logger.debug(f"homeTimeLine data from db user: {each}") #Method logger has no debug member
+    for each in is_following_list:
+        tweetList = query_db('SELECT * FROM TWEETS WHERE FK_USERS = ? ORDER BY DAY_OF DESC LIMIT 25', each)
+        cache.set(each, tweetList)
+        app.logger.debug(f"homeTimeLine data from db user: {each}") #Method logger has no debug member
     # else:
     #     app.logger.debug(f"homeTimeLine data from cache user: {each}")  #Method logger has no debug member
     #     homeTimeLine.extend(cache.get(each))

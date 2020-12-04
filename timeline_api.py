@@ -3,7 +3,7 @@
 #Jose Alvarado, Luan Nguyen, Sagar Joshi
 
 import flask
-from flask import Flask, request, jsonify, g, current_app, make_response, Response, abort
+from flask import Flask, request, jsonify, g, current_app, make_response, Response, abort, json
 import sqlite3, time, datetime
 from werkzeug.exceptions import HTTPException, default_exceptions,  Aborter
 from flask_caching import Cache
@@ -139,40 +139,31 @@ def getHomeTimeline():
     cur = conn.cursor()
 
     is_following_list = []
-    first = True
-    while first == True:
-        homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
-        for user in query_db('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', Username):
-            if user['FK_USERS'] not in is_following_list:
-                is_following_list.append((user['FK_USERS']))
-        # is_following_list = []
-        str1 = ""
-        for ele in is_following_list:
-            str1 += ele
+    homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
+    
+    # returns a list of users following a username
+    for user in query_db('SELECT FOLLOWERS FROM FOLLOW WHERE FK_USER = ?', Username):
+        if user['FOLLOWERS'] not in is_following_list:
+             is_following_list.append((user['FOLLOWERS']))
 
 
-        for each in is_following_list:
+    #for extracting users information into list form
+    homeTimeline = []
+    for each in is_following_list:
+        if (cache.get(each) == None):
             tweetList = query_db('SELECT * FROM TWEETS WHERE FK_USERS = ? ORDER BY DAY_OF DESC LIMIT 25', each)
             cache.set(each, tweetList)
-        app.logger.debug("homeTimeLine data from db user:") #Method logger has no debug member
-        first = False
-        # rsp = Response(jsonify(homeTweets))
-        # rsp.headers.add('Last-Modified', datetime.now())
-        # return rsp, 201
-        return jsonify(homeTweets), 201
-    else:
-
-        for user in query_db('SELECT * FOLLOWERS FROM FOLLOW WHERE FK_USER = ?', Username):
-            try:
-                return jsonify(cache.get(user['FOLLOWERS']),201)
-                app.logger.debug("homeTimeLine data from cache user")  #Method logger has no debug member
-            except:
-                return jsonify(query_db('SELECT * FROM TWEETS WHERE FK_USERS = ? ORDER BY DAY_OF DESC LIMIT 25', user))
-
-    # sortedTimeLine = sorted(homeTimeLine, key=itemgetter('dateto'), reverse=True)
+            app.logger.debug(f"homeTimeLine data from db user:") #Method logger has no debug member
+        else:
+            app.logger.debug(f"homeTimeLine data from cache user:")
+            homeTimeline.extend(cache.get(each))
+    # res = Response(jsonify(homeTimeline), content_type='application/json')
+    # res.headers.add('Last-Modified', datetime.now())
+    # return res
+    return jsonify(homeTweets), 201
 
 
-    # return str1
+
 
 #postTweet(username, text)
 #Post a new tweet.

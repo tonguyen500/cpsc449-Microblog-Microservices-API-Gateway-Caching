@@ -13,6 +13,9 @@ import requests
 from flask_basicauth import BasicAuth
 
 from collections import deque
+# ModifiableCycle used to essentially convert itertool.cycle() into a deque to prevent constant iteration
+# Link for code by user2357112 supports Monica: https://stackoverflow.com/questions/24438153/modify-itertools-cycle
+# How to use deque object: https://docs.python.org/2/library/collections.html
 
 class ModifiableCycle(object):
     def __init__(self, items=()):

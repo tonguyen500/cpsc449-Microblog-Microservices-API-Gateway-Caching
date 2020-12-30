@@ -24,14 +24,14 @@ default_exceptions[304] = NotModified
 abort = Aborter()
 cache = Cache(config={'CACHE_TYPE': 'simple','CACHE_DEFAULT_TIMEOUT': 300})
 
-app = Flask(__name__)
+app = flask.Flask(__name__)
 app.config.from_object(__name__)
 app.config["DEBUG"]= True
-app.config["CACHE_TYPE": "simple"
+# app.config["CACHE_TYPE": "simple"]
 # app.config['CACHE_DEFAULT_TIMEOUT']=300
-#
-cache = Cache(app)
-# cache.init_app(app)
+
+# cache = Cache(app)
+cache.init_app(app)
 
 def dict_factory(cursor, row):
     d = {}
@@ -140,8 +140,8 @@ def getHomeTimeline():
     cur = conn.cursor()
 
     is_following_list = []
-    #homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
-    
+    # homeTweets = cur.execute('SELECT TWEET, DAY_OF, FK_USERS FROM TWEETS INNER JOIN FOLLOW ON FOLLOW.FOLLOWERS = TWEETS.FK_USERS WHERE FOLLOW.FK_USER = ? ORDER BY DAY_OF DESC LIMIT 25', (Username)).fetchall()
+
     # returns a list of users following a username
     for user in query_db('SELECT FOLLOWERS FROM FOLLOW WHERE FK_USER = ?', Username):
         if user['FOLLOWERS'] not in is_following_list:
@@ -149,19 +149,21 @@ def getHomeTimeline():
 
 
     #for extracting users information into list form
+
     homeTimeline = []
     for each in is_following_list:
         if (cache.get(each) == None):
-            tweetList = query_db('SELECT * FROM TWEETS WHERE FK_USERS = ? ORDER BY DAY_OF DESC LIMIT 25', each)
+            tweetList = []
+            tweetList.append(query_db('SELECT * FROM TWEETS WHERE FK_USERS = ? ORDER BY DAY_OF DESC LIMIT 25', each))
             cache.set(each, tweetList)
+            homeTimeline.append(cache.get(each))
             app.logger.debug(f"homeTimeLine data from db user:") #Method logger has no debug member
         else:
             app.logger.debug(f"homeTimeLine data from cache user:")
-            homeTimeline.extend(cache.get(each))
-    res = Response(jsonify(homeTimeline), content_type='application/json')
-    res.headers.add('Last-Modified', datetime.now())
-    return res
-    # return jsonify(homeTweets), 201
+            homeTimeline.append(cache.get(each))
+
+    # return jsonify(tweetList), 201
+    return jsonify(homeTimeline), 201
 
 
 #postTweet(username, text)
@@ -182,11 +184,7 @@ def postTweet():
     return jsonify(message= Username + tweetText + ' posted'), 201
 
 
-# @app.after_request
-# def add_headers(resp):
-#     resp.headers['Last-Modified']
-#     return resp
-# 404 error if page not found
+
 @app.errorhandler(304)
 def page_not_found(e):
     return e, 304
@@ -204,8 +202,8 @@ def page_not_found(e):
 #    app.run()
 
 # Professor's comments:
-# 1. The correct response code for HTTP caching is 304, not 340. There should be no payload. 
-# 2. The work you're doing with the object cache is useless because you've already run the JOIN statement. 
+# 1. The correct response code for HTTP caching is 304, not 340. There should be no payload.
+# 2. The work you're doing with the object cache is useless because you've already run the JOIN statement.
 # a) You shouldn't be running a JOIN statement at all in getHomeTimeline(); you'll only ever be doing the individual queries against FOLLOWERS and TWEETS.
 # b) The queries against TWEETS should be skipped if the values are already in cache.
 #

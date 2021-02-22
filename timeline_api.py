@@ -201,9 +201,4 @@ def page_not_found(e):
 #if __name__ == '__main__':
 #    app.run()
 
-# Professor's comments:
-# 1. The correct response code for HTTP caching is 304, not 340. There should be no payload.
-# 2. The work you're doing with the object cache is useless because you've already run the JOIN statement.
-# a) You shouldn't be running a JOIN statement at all in getHomeTimeline(); you'll only ever be doing the individual queries against FOLLOWERS and TWEETS.
-# b) The queries against TWEETS should be skipped if the values are already in cache.
-#
+
